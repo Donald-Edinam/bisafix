@@ -1,33 +1,84 @@
 import { userService } from '../services/user.service.js';
 import { Constants } from '../config/constants.js';
+import { successResponse, errorResponse } from '../utils/apiResponse.js';
 
-export const getAllUsers = async (_req, res, next) => {
+/**
+ * GET /api/v1/users/me
+ * Get current user profile
+ */
+export const getCurrentUser = async (req, res, next) => {
     try {
-        const users = await userService.fetchUsers();
-        res.status(Constants.HTTP_STATUS.OK).json({
-            success: true,
-            count: users.length,
-            data: users,
-        });
-    } catch (err) {
-        next(err);
+        const userId = req.session.getUserId();
+        const user = await userService.getUserById(userId);
+
+        if (!user) {
+            return errorResponse(
+                res,
+                Constants.HTTP_STATUS.NOT_FOUND,
+                'User not found',
+            );
+        }
+
+        return successResponse(res, Constants.HTTP_STATUS.OK, user);
+    } catch (error) {
+        next(error);
     }
 };
 
+/**
+ * PUT /api/v1/users/me
+ * Update current user profile
+ */
+export const updateCurrentUser = async (req, res, next) => {
+    try {
+        const userId = req.session.getUserId();
+        const updateData = req.body;
+
+        const updatedUser = await userService.updateUser(userId, updateData);
+
+        return successResponse(
+            res,
+            Constants.HTTP_STATUS.OK,
+            updatedUser,
+            'Profile updated successfully',
+        );
+    } catch (error) {
+        if (error.code === 'P2002') {
+            // Prisma unique constraint violation
+            return errorResponse(
+                res,
+                Constants.HTTP_STATUS.CONFLICT,
+                'Email or phone number already in use',
+            );
+        }
+        next(error);
+    }
+};
+
+/**
+ * GET /api/v1/users/:id
+ * Get user by ID (for admin or public profile view)
+ */
 export const getUserById = async (req, res, next) => {
     try {
-        const user = await userService.fetchUserById(req.params.id);
+        const user = await userService.getUserById(req.params.id);
+
         if (!user) {
-            return res
-                .status(Constants.HTTP_STATUS.NOT_FOUND)
-                .json({ success: false, message: 'User not found' });
+            return errorResponse(
+                res,
+                Constants.HTTP_STATUS.NOT_FOUND,
+                'User not found',
+            );
         }
 
-        res.status(Constants.HTTP_STATUS.OK).json({
-            success: true,
-            data: user,
-        });
-    } catch (err) {
-        next(err);
+        return successResponse(res, Constants.HTTP_STATUS.OK, user);
+    } catch (error) {
+        next(error);
     }
+};
+
+export default {
+    getCurrentUser,
+    updateCurrentUser,
+    getUserById,
 };

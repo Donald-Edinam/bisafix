@@ -1,0 +1,91 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+
+// Enums
+enum Role {
+  client
+  artisan
+  admin
+}
+
+enum VerificationStatus {
+  tier1_pending
+  tier1_verified
+  tier2_pending
+  tier2_verified
+  rejected
+}
+
+enum JobStatus {
+  posted
+  in_verification
+  awaiting_pricing
+  awaiting_assignment
+  in_progress
+  completed
+  cancelled
+}
+
+// Models
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  phone     String   @unique
+  password  String
+  role      Role
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  artisan ArtisanProfile?
+  jobs    Job[]           @relation("ClientJobs")
+
+  @@map("users")
+}
+
+model ArtisanProfile {
+  id                 String             @id @default(uuid())
+  userId             String             @unique
+  user               User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  skills             String[]           @default([])
+  experienceYears    Int?
+  verificationStatus VerificationStatus @default(tier1_pending)
+  rating             Float              @default(0)
+  jobsCompleted      Int                @default(0)
+  
+  // Identity verification fields
+  idType             String?
+  idFrontImageUrl    String?
+  idBackImageUrl     String?
+  
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  @@map("artisan_profiles")
+}
+
+model Job {
+  id          String    @id @default(uuid())
+  clientId    String
+  client      User      @relation(fields: [clientId], references: [id], name: "ClientJobs")
+  title       String
+  description String
+  category    String
+  location    Json
+  status      JobStatus @default(posted)
+  media       String[]  @default([])
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("jobs")
+}
