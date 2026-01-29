@@ -22,8 +22,34 @@ const app = express();
 // Logging
 app.use(morganMiddleware);
 
-// Security
-app.use(helmet());
+// Security - Configure Helmet with CSP for Scalar docs
+app.use(
+    helmet({
+        contentSecurityPolicy: {
+            directives: {
+                defaultSrc: ["'self'"],
+                scriptSrc: [
+                    "'self'",
+                    "'unsafe-inline'", // Required for Scalar
+                    'https://cdn.jsdelivr.net',
+                ],
+                styleSrc: [
+                    "'self'",
+                    "'unsafe-inline'", // Required for Scalar
+                    'https://cdn.jsdelivr.net',
+                    'https://fonts.googleapis.com',
+                ],
+                fontSrc: [
+                    "'self'",
+                    'https://fonts.gstatic.com',
+                    'https://cdn.jsdelivr.net',
+                ],
+                imgSrc: ["'self'", 'data:', 'https://cdn.jsdelivr.net'],
+                connectSrc: ["'self'"],
+            },
+        },
+    }),
+);
 app.use(compression());
 app.use(
     rateLimit({ windowMs: 15 * 60 * 1000, max: 100, standardHeaders: true }),
